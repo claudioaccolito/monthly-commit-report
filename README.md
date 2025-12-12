@@ -2,12 +2,14 @@
 
 A Bash script to scan Git repositories and summarize your commits from the first day of the current month to today.
 
-Default behavior: place this repository folder (`monthly-commit-report`) inside your parent folder that contains all your Git projects (e.g., `work`). When you run the script from inside `monthly-commit-report`, it scans the parent folder (`..`) and thus all sibling projects.
+Default behavior: place this repository folder (`monthly-commit-report`) inside the `zdev` folder under your main workspace (e.g., `work/zdev`). When you run the script from inside `monthly-commit-report`, it scans the parent of `zdev` (two levels up, i.e. `work`) and, by default, excludes anything under `zdev` from the scan.
 
 ## Features
 
-- Default scan path: parent folder (`..`) so it scans sibling projects.
+- Default scan path: parent of `zdev` (two levels up) so it scans `work`.
+- `zdev` is excluded by default: repos inside `zdev` are ignored.
 - Configurable base path: override with `BASE_PATH=.` to scan only the current folder.
+- Configurable exclusions: set `EXCLUDE_DIRS` (comma-separated) to skip directories.
 - Per-repo output:
   - Cyan group separator and label (e.g., `==== group-a ====`).
   - Blue repo header: `[GROUP] repo-name`.
@@ -27,12 +29,14 @@ Default behavior: place this repository folder (`monthly-commit-report`) inside 
 
 ## Folder Structure
 
-Recommended layout: place this repo inside your parent folder that holds all projects (e.g., `work`). The script will scan the parent and group repos by the first-level directory name (e.g., `group-a`, `group-b`).
+Recommended layout: place this repo inside `work/zdev`. The script scans `work` by default and groups repos by the first-level directory name (e.g., `group-a`, `group-b`). Everything under `zdev` is ignored unless you change `EXCLUDE_DIRS`.
 
 ```text
 work/
-  monthly-commit-report/
-    rilevaz.sh
+  zdev/
+    monthly-commit-report/
+      rilevaz.sh
+    <your-dev-repos>  # excluded by default
   group-a/
     <repo-a>/
       .git/
@@ -50,7 +54,7 @@ work/
       ...
 ```
 
-- Run the script from `monthly-commit-report` so it scans `..` (the parent) by default.
+- Run the script from `monthly-commit-report`; it scans `work` (two levels up) by default and excludes `zdev`.
 - Each repository must be a valid Git repo (i.e., contain a `.git` folder).
 - The first folder under `work` is treated as the "group" label in output.
 
@@ -84,7 +88,7 @@ AUTHOR_NAME="Fester Addams" AUTHOR_EMAIL="fester.addams@company.com" ./rilevaz.s
 
 ## Usage
 
-Run from the `monthly-commit-report` directory (scans parent by default):
+Run from the `monthly-commit-report` directory (scans `work` and excludes `zdev` by default):
 
 ```powershell
 bash ./rilevaz.sh
@@ -111,11 +115,30 @@ $env:BASE_PATH = "."; bash ./rilevaz.sh
 ```bash
 BASE_PATH=. ./rilevaz.sh
 ```
+
+Exclude different directories (comma-separated). By default `zdev` is excluded; set your own list or clear it to include everything:
+
+```powershell
+$env:EXCLUDE_DIRS="group-a,archive"; bash ./rilevaz.sh
+```
+
+```bash
+EXCLUDE_DIRS="group-a,archive" ./rilevaz.sh
+```
+
+Include `zdev` in the scan (remove default exclusion):
+
+```powershell
+$env:EXCLUDE_DIRS=""; bash ./rilevaz.sh
+```
+
+```bash
+EXCLUDE_DIRS="" ./rilevaz.sh
 ```
 
 ## How It Works
 
-- Finds nested Git repositories via `find . -maxdepth 4 -type d -name ".git"`.
+- Finds nested Git repositories via `find . -maxdepth 4 -type d -name ".git"`, then filters out any paths starting with directories listed in `EXCLUDE_DIRS` (default: `zdev`).
 - Detects author from local repo config; filters `git log` by author.
 - Prints commits grouped by top-level folder (e.g., `group-a`, `group-b`).
 - Aggregates per-group unique days using temporary files to ensure safe parallelism.
@@ -132,11 +155,12 @@ BASE_PATH=. ./rilevaz.sh
 ## Troubleshooting
 
 - No output for some repos: ensure local `user.name` or `user.email` matches the commit author identity used in that repo.
-- Run from the correct folder: the script assumes it is executed inside `work`.
+- `zdev` excluded: by default, repos under `zdev` won’t show up. To include them, set `EXCLUDE_DIRS=""`.
+- Run from the correct folder: execute the script from inside `monthly-commit-report`.
 - Adjust scan depth or parallel jobs if it’s slow: `-maxdepth 4`, `PARALLEL_JOBS`.
 
 ## Notes
 
 - Parallel printing may interleave lines from different repos; the script buffers per-group day aggregation to avoid errors and preserves final summaries.
 - If you want strict ordering for repo outputs, adapt the script to buffer each repo’s block into temp files and collate by group/repo at the end.
- - Publishing: suitable for private repos. Before making public, sanitize sample outputs and avoid hardcoding personal emails/names; prefer env vars.
+- Publishing: suitable for private repos. Before making public, sanitize sample outputs and avoid hardcoding personal emails/names; prefer env vars.

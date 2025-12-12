@@ -8,9 +8,14 @@ if [ "${DEBUG:-0}" = "1" ]; then
     set -x
 fi
 
-# Base folder to scan: defaults to parent directory
-# You can override via env: e.g., BASE_PATH=.
-BASE_PATH="${BASE_PATH:-..}"
+# Base folder to scan
+# Default: two levels up from this repo (e.g., from zdev/monthly-commit-report to work)
+# You can override via env: e.g., BASE_PATH=. to scan only current folder
+BASE_PATH="${BASE_PATH:-../..}"
+
+# Comma-separated list of top-level directories to exclude from scan (relative to BASE_PATH)
+# Default excludes 'zdev' so repos inside zdev (including this repo) are ignored
+EXCLUDE_DIRS="${EXCLUDE_DIRS:-zdev}"
 
 # Default author fallback; can be overridden via env AUTHOR_NAME or AUTHOR
 AUTHOR="${AUTHOR_NAME:-${AUTHOR:-c.accolito}}"
@@ -90,6 +95,28 @@ echo "[INFO] Starting scan in: $BASE_PATH" 1>&2
 echo "Period: from $FROM_DATE to $(date +%Y-%m-%d)"
 # Limit depth to avoid slow scans
 mapfile -t repo_dirs < <(find . -maxdepth 4 -type d -name ".git" -printf "%h\n" 2>/dev/null)
+
+# Apply directory exclusions (skip any repos under excluded top-level dirs)
+if [ -n "$EXCLUDE_DIRS" ] && [ "${#repo_dirs[@]}" -gt 0 ]; then
+    IFS=',' read -r -a _EXCLUDES <<< "$EXCLUDE_DIRS"
+    _filtered=()
+    for _d in "${repo_dirs[@]}"; do
+        _rel="${_d#./}"
+        _skip=0
+        for _ex in "${_EXCLUDES[@]}"; do
+            # trim spaces
+            _ex_trim="${_ex//[[:space:]]/}"
+            [ -z "$_ex_trim" ] && continue
+            # Match if path starts with excluded dir name (top-level)
+            if [[ "$_rel" == "$_ex_trim"* ]]; then
+                _skip=1
+                break
+            fi
+        done
+        [ "$_skip" -eq 0 ] && _filtered+=("$_d")
+    done
+    repo_dirs=("${_filtered[@]}")
+fi
 echo "[INFO] Repositories found: ${#repo_dirs[@]}" 1>&2
 echo
 
