@@ -9,9 +9,18 @@ if [ "${DEBUG:-0}" = "1" ]; then
 fi
 
 # Base folder to scan
-# Default: two levels up from this repo (e.g., from zdev/monthly-commit-report to work)
+# Default resolves relative to this script's directory (not the CWD):
+# two levels up from this repo (zdev/monthly-commit-report -> work)
 # You can override via env: e.g., BASE_PATH=. to scan only current folder
-BASE_PATH="${BASE_PATH:-../..}"
+_SOURCE="${BASH_SOURCE[0]}"
+while [ -h "$_SOURCE" ]; do # resolve symlinks
+    _DIR="$(cd -P "$(dirname "$_SOURCE")" && pwd)"
+    _SOURCE="$(readlink "$_SOURCE")"
+    [[ $_SOURCE != /* ]] && _SOURCE="$_DIR/$_SOURCE"
+done
+SCRIPT_DIR="$(cd -P "$(dirname "$_SOURCE")" && pwd)"
+DEFAULT_BASE_PATH="$(cd "$SCRIPT_DIR/../.." && pwd)"
+BASE_PATH="${BASE_PATH:-$DEFAULT_BASE_PATH}"
 
 # Comma-separated list of top-level directories to exclude from scan (relative to BASE_PATH)
 # Default excludes 'zdev' so repos inside zdev (including this repo) are ignored

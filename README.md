@@ -76,6 +76,16 @@ AUTHOR_EMAIL="fester.addams@company.com"  # matches git commit author email
 - If both are set, email usually provides the most reliable match across repos.
 - After changing the variable(s), re-run the script from `monthly-commit-report`.
 
+- Use case: to see which shared projects a colleague worked on this month, run the report with their identity, for example:
+
+  ```bash
+  AUTHOR_EMAIL="colleague@example.com" ./rilevaz.sh
+  # or, if using the alias
+  AUTHOR_EMAIL="colleague@example.com" rilevaz
+  ```
+  
+  The scan only includes repositories that exist locally on your machine and are shared with that colleague.
+
 Alternatively, use environment variables (recommended for private/public repos):
 
 ```powershell
@@ -136,6 +146,34 @@ $env:EXCLUDE_DIRS=""; bash ./rilevaz.sh
 EXCLUDE_DIRS="" ./rilevaz.sh
 ```
 
+## Global Alias (Git Bash)
+
+You can create a shell alias to run the report from anywhere. The script now resolves paths relative to its own location, so no extra variables are needed.
+
+Add this to your `~/.bashrc` and reload the shell (`source ~/.bashrc`):
+
+```bash
+alias rilevaz='bash "/c/Users/c.accolito/work/zdev/monthly-commit-report/rilevaz.sh"'
+```
+
+Tip: you can also place a small wrapper script in `~/bin` and add it to your `PATH` from `~/.bashrc`.
+
+### Alias Usage
+
+After adding the alias and reloading your shell (`source ~/.bashrc`), you can run the report from any folder:
+
+```bash
+rilevaz
+```
+
+Temporarily set a specific author name or email (handy if detection fails):
+
+```bash
+AUTHOR_NAME="Your Name" rilevaz
+# or
+AUTHOR_EMAIL="your.name@example.com" rilevaz
+```
+
 ## How It Works
 
 - Finds nested Git repositories via `find . -maxdepth 4 -type d -name ".git"`, then filters out any paths starting with directories listed in `EXCLUDE_DIRS` (default: `zdev`).
@@ -159,7 +197,7 @@ EXCLUDE_DIRS="" ./rilevaz.sh
 - Run from the correct folder: execute the script from inside `monthly-commit-report`.
 - Adjust scan depth or parallel jobs if it’s slow: `-maxdepth 4`, `PARALLEL_JOBS`.
 
-## Notes
+## Additional Notes
 
 - Parallel printing may interleave lines from different repos; the script buffers per-group day aggregation to avoid errors and preserves final summaries.
 - If you want strict ordering for repo outputs, adapt the script to buffer each repo’s block into temp files and collate by group/repo at the end.
